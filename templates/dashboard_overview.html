@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mask Detection - Executive Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #101a28;
+            --panel: rgba(255, 255, 255, 0.05);
+            --panel-strong: rgba(8, 16, 30, 0.95);
+            --ink: #f4fbff;
+            --ink-soft: rgba(255, 255, 255, 0.62);
+            --line: rgba(255, 255, 255, 0.1);
+            --teal: #00adb5;
+            --mint: #00ff88;
+            --amber: #ffc107;
+            --red: #ff3333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(0, 173, 181, 0.2), transparent 35%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        .layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: 0.3px;
+            font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+        }
+
+        .nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav a.active {
+            background: var(--teal);
+            color: #fff;
+            border-color: var(--teal);
+            box-shadow: 0 8px 24px rgba(0, 173, 181, 0.25);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .kpi {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .kpi-label {
+            color: var(--ink-soft);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .kpi-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            margin-top: 8px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h2 {
+            font-size: 15px;
+            margin-bottom: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .panel,
+        .kpi,
+        .table-wrap {
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-wrap {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            overflow: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--line);
+            padding: 10px 12px;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--panel-strong);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        td {
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="layout">
+        <header class="topbar">
+            <h1>Executive Overview Dashboard</h1>
+            <nav class="nav">
+                <a href="/">Live Feed</a>
+                <a class="active" href="/dashboard/overview/">Overview</a>
+                <a href="/dashboard/insights/">Insights</a>
+                <a href="/planner/compliance/">Compliance Planner</a>
+                <a href="/replay/incidents/">Incident Replay</a>
+            </nav>
+        </header>
+
+        {% include 'live_stats_strip.html' %}
+
+        <section class="kpi-grid">
+            <article class="kpi"><p class="kpi-label">Total Faces</p><p id="kpiFaces" class="kpi-value">0</p></article>
+            <article class="kpi"><p class="kpi-label">Compliance Rate</p><p id="kpiCompliance" class="kpi-value">0%</p></article>
+            <article class="kpi"><p class="kpi-label">Active Alerts</p><p id="kpiAlerts" class="kpi-value">0</p></article>
+            <article class="kpi"><p class="kpi-label">High Risk Events</p><p id="kpiHighRisk" class="kpi-value">0</p></article>
+        </section>
+
+        <section class="grid">
+            <article class="panel">
+                <h2>Mask vs No Mask Distribution</h2>
+                <canvas id="maskMixChart" height="145"></canvas>
+            </article>
+            <article class="panel">
+                <h2>Risk Split</h2>
+                <canvas id="riskChart" height="145"></canvas>
+            </article>
+            <article class="panel" style="grid-column: 1 / -1;">
+                <h2>Compliance Trend Across Recent Records</h2>
+                <canvas id="trendChart" height="115"></canvas>
+            </article>
+        </section>
+
+        <section class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Camera</th>
+                        <th>Location</th>
+                        <th>Total Faces</th>
+                        <th>Masked</th>
+                        <th>No Mask</th>
+                        <th>Compliance</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody">
+                    <tr><td colspan="8">No records available</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script>
+        const palette = {
+            teal: '#008c9e',
+            mint: '#1bbf8a',
+            amber: '#e89a22',
+            red: '#d94a4a'
+        };
+
+        const maskMixChart = new Chart(document.getElementById('maskMixChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Masked', 'No Mask'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: [palette.mint, palette.red],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.8)' } } }
+            }
+        });
+
+        const riskChart = new Chart(document.getElementById('riskChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High'],
+                datasets: [{
+                    label: 'Events',
+                    data: [0, 0, 0],
+                    backgroundColor: [palette.mint, palette.amber, palette.red]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+                }
+            }
+        });
+
+        const trendChart = new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Compliance %',
+                    data: [],
+                    borderColor: palette.teal,
+                    backgroundColor: 'rgba(0, 140, 158, 0.18)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    y: { min: 0, max: 100, ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        async function loadDashboard() {
+            const [statsRes, detectionsRes] = await Promise.all([
+                fetch('/api/stats/'),
+                fetch('/api/detections/')
+            ]);
+
+            const stats = await statsRes.json();
+            const detectionsPayload = await detectionsRes.json();
+            const detections = detectionsPayload.detections || [];
+
+            document.getElementById('kpiFaces').textContent = stats.total_faces || 0;
+            document.getElementById('kpiCompliance').textContent = `${stats.compliance_rate || 0}%`;
+            document.getElementById('kpiAlerts').textContent = stats.active_alerts || 0;
+            document.getElementById('kpiHighRisk').textContent = stats.risk_distribution ? stats.risk_distribution.high : 0;
+
+            maskMixChart.data.datasets[0].data = [stats.masked_count || 0, stats.unmasked_count || 0];
+            maskMixChart.update();
+
+            const risk = stats.risk_distribution || { low: 0, medium: 0, high: 0 };
+            riskChart.data.datasets[0].data = [risk.low, risk.medium, risk.high];
+            riskChart.update();
+
+            const trendRows = detections.slice(0, 15).reverse();
+            trendChart.data.labels = trendRows.map(item => new Date(item.timestamp).toLocaleTimeString());
+            trendChart.data.datasets[0].data = trendRows.map(item => Number(item.compliance_rate || 0));
+            trendChart.update();
+
+            const body = document.getElementById('recordsBody');
+            if (!detections.length) {
+                body.innerHTML = '<tr><td colspan="8">No records available</td></tr>';
+                return;
+            }
+
+            body.innerHTML = detections.slice(0, 12).map(item => `
+                <tr>
+                    <td>${new Date(item.timestamp).toLocaleString()}</td>
+                    <td>${item.camera_id}</td>
+                    <td>${item.location}</td>
+                    <td>${item.total_faces}</td>
+                    <td>${item.masked_count}</td>
+                    <td>${item.unmasked_count}</td>
+                    <td>${Number(item.compliance_rate).toFixed(1)}%</td>
+                    <td>${item.risk_level}</td>
+                </tr>
+            `).join('');
+        }
+
+        loadDashboard();
+        setInterval(loadDashboard, 5000);
+    </script>
+</body>
+</html>

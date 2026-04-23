@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mask Detection - Incident Replay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #101a28;
+            --panel: rgba(255, 255, 255, 0.05);
+            --line: rgba(255, 255, 255, 0.1);
+            --ink: #f4fbff;
+            --soft: rgba(255, 255, 255, 0.62);
+            --steel: #00adb5;
+            --amber: #ffc107;
+            --red: #ff3333;
+            --green: #00ff88;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(0, 173, 181, 0.18), transparent 35%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.4rem, 2.2vw, 2rem); }
+
+        .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 13px;
+        }
+
+        .nav a.active {
+            background: var(--steel);
+            color: #fff;
+            border-color: var(--steel);
+            box-shadow: 0 8px 24px rgba(0, 173, 181, 0.25);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            margin-bottom: 11px;
+        }
+
+        .timeline {
+            margin-top: 12px;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+
+        .stats {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 11px;
+            padding: 10px;
+            background: rgba(8, 16, 30, 0.55);
+        }
+
+        .label {
+            font-size: 12px;
+            color: var(--soft);
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.55rem;
+            margin-top: 4px;
+        }
+
+        .feed {
+            max-height: 380px;
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+        }
+
+        .event {
+            padding: 10px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+            background: rgba(8, 16, 30, 0.35);
+        }
+
+        .event.high { border-left: 4px solid var(--red); }
+        .event.medium { border-left: 4px solid var(--amber); }
+        .event.low { border-left: 4px solid var(--green); }
+
+        .summary {
+            margin-top: 12px;
+            background: rgba(0, 173, 181, 0.12);
+            border: 1px solid rgba(0, 173, 181, 0.25);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            color: rgba(244, 251, 255, 0.86);
+        }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="header">
+            <h1>Incident Replay Studio</h1>
+            <nav class="nav">
+                <a href="/">Live Feed</a>
+                <a href="/dashboard/overview/">Overview</a>
+                <a href="/dashboard/insights/">Insights</a>
+                <a href="/planner/compliance/">Compliance Planner</a>
+                <a class="active" href="/replay/incidents/">Incident Replay</a>
+            </nav>
+        </header>
+
+        {% include 'live_stats_strip.html' %}
+
+        <section class="grid">
+            <article class="panel">
+                <h2>Replay Timeline</h2>
+                <p id="timeLabel">Load records to start replay...</p>
+                <div class="timeline">
+                    <input id="timelineSlider" type="range" min="0" max="0" value="0">
+                </div>
+
+                <div class="stats">
+                    <div class="card"><div class="label">Total Faces</div><div id="totalFaces" class="value">0</div></div>
+                    <div class="card"><div class="label">Compliance</div><div id="compliance" class="value">0%</div></div>
+                    <div class="card"><div class="label">No Mask</div><div id="noMask" class="value">0</div></div>
+                    <div class="card"><div class="label">Risk</div><div id="risk" class="value">LOW</div></div>
+                </div>
+
+                <div class="summary" id="recommendedAction">
+                    Recommended action will appear here.
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>Related Alerts</h2>
+                <div class="feed" id="alertFeed"></div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        let detections = [];
+        let alerts = [];
+
+        function actionFor(record) {
+            if (!record) return 'No incident selected.';
+            const compliance = Number(record.compliance_rate || 0);
+            if (compliance < 50) return 'Escalate to on-site security, trigger public announcement, and log manager acknowledgement.';
+            if (compliance < 80) return 'Dispatch floor marshal and send SMS reminder to nearby staff.';
+            return 'Maintain passive monitoring with standard signage rotation.';
+        }
+
+        function renderCurrent(index) {
+            if (!detections.length) return;
+
+            const current = detections[index];
+            document.getElementById('timeLabel').textContent = new Date(current.timestamp).toLocaleString();
+            document.getElementById('totalFaces').textContent = current.total_faces;
+            document.getElementById('compliance').textContent = `${Number(current.compliance_rate).toFixed(1)}%`;
+            document.getElementById('noMask').textContent = current.unmasked_count;
+            document.getElementById('risk').textContent = current.risk_level;
+            document.getElementById('recommendedAction').textContent = actionFor(current);
+
+            const atTime = new Date(current.timestamp).getTime();
+            const nearAlerts = alerts.filter(item => {
+                const diffMinutes = Math.abs(new Date(item.timestamp).getTime() - atTime) / 60000;
+                return diffMinutes <= 15;
+            });
+
+            const alertFeed = document.getElementById('alertFeed');
+            if (!nearAlerts.length) {
+                alertFeed.innerHTML = '<div class="event">No related alerts in +/- 15 minutes.</div>';
+                return;
+            }
+
+            alertFeed.innerHTML = nearAlerts.map(item => {
+                const sev = String(item.severity || 'low').toLowerCase();
+                return `
+                    <div class="event ${sev}">
+                        <strong>${item.severity}</strong> | ${new Date(item.timestamp).toLocaleTimeString()}<br>
+                        ${item.message}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function initReplay() {
+            const [detRes, alertRes] = await Promise.all([
+                fetch('/api/detections/'),
+                fetch('/api/alerts/')
+            ]);
+
+            detections = (await detRes.json()).detections || [];
+            alerts = (await alertRes.json()).alerts || [];
+
+            const slider = document.getElementById('timelineSlider');
+
+            if (!detections.length) {
+                slider.min = 0;
+                slider.max = 0;
+                slider.value = 0;
+                document.getElementById('timeLabel').textContent = 'No detections available to replay.';
+                document.getElementById('alertFeed').innerHTML = '<div class="event">No alerts available.</div>';
+                return;
+            }
+
+            slider.min = 0;
+            slider.max = detections.length - 1;
+            slider.value = 0;
+
+            slider.addEventListener('input', function () {
+                renderCurrent(Number(this.value));
+            });
+
+            renderCurrent(0);
+        }
+
+        initReplay();
+    </script>
+</body>
+</html>

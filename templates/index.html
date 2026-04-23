@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Surveillance System - Mask Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(0, 173, 181, 0.3);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(45deg, #00adb5, #00ff88);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quick-nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-left: auto;
+            margin-right: 20px;
+        }
+
+        .quick-nav a {
+            text-decoration: none;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            transition: all 0.2s ease;
+        }
+
+        .quick-nav a:hover {
+            border-color: rgba(0, 173, 181, 0.8);
+            background: rgba(0, 173, 181, 0.2);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff3333;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #00ff88;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            padding: 20px 40px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .main-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00adb5;
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            min-height: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: auto;
+            display: none;
+        }
+
+        .video-placeholder {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .video-placeholder h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #00adb5;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00adb5, #00ff88);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 173, 181, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff3333, #ff6b6b);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 51, 51, 0.4);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #00adb5;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #00ff88;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .alert-item {
+            background: rgba(255, 51, 51, 0.1);
+            border-left: 4px solid #ff3333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-item.warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-left-color: #ffc107;
+        }
+
+        .alert-item.success {
+            background: rgba(0, 255, 136, 0.1);
+            border-left-color: #00ff88;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .alert-type {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .alert-time {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .alert-message {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .alert-location {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+        }
+
+        .detection-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 320px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 620px;
+        }
+
+        .data-table thead {
+            position: sticky;
+            top: 0;
+            background: rgba(8, 16, 30, 0.95);
+            z-index: 1;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .detection-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detection-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .risk-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .risk-badge.low {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .risk-badge.medium {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .risk-badge.high {
+            background: rgba(255, 51, 51, 0.2);
+            color: #ff3333;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00adb5, #00ff88);
+            transition: width 0.3s ease;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 173, 181, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 173, 181, 0.8);
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <span>🎯</span>
+            AI Surveillance System
+        </h1>
+        <div class="quick-nav">
+            <a href="/dashboard/overview/">Overview Dashboard</a>
+            <a href="/dashboard/insights/">Insights Dashboard</a>
+            <a href="/planner/compliance/">Compliance Planner</a>
+            <a href="/replay/incidents/">Incident Replay</a>
+        </div>
+        <div class="status-indicator">
+            <div class="status-dot" id="systemStatus"></div>
+            <span id="statusText">System Offline</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Live Camera Feed</h2>
+                </div>
+                <div class="video-container">
+                    <img id="videoFeed" src="" alt="Video Feed">
+                    <div class="video-placeholder" id="placeholder">
+                        <h3>Camera Offline</h3>
+                        <p>Click "Start Camera" to begin monitoring</p>
+                    </div>
+                </div>
+                <div class="camera-controls">
+                    <button class="btn btn-primary" id="startBtn" onclick="startCamera()">
+                        <span>📹</span> Start Camera
+                    </button>
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopCamera()" style="display: none;">
+                        <span>⏹️</span> Stop Camera
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Real-Time Statistics</h2>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Faces</div>
+                        <div class="stat-value" id="totalFaces">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Masked</div>
+                        <div class="stat-value" id="maskedCount" style="color: #00ff88;">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">No Mask</div>
+                        <div class="stat-value" id="unmaskedCount" style="color: #ff3333;">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Compliance Rate</div>
+                        <div class="stat-value" id="complianceRate">0%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="complianceProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">All Detections (MongoDB)</h2>
+                </div>
+                <div class="table-wrapper" id="detectionsTableWrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Camera</th>
+                                <th>Location</th>
+                                <th>Total</th>
+                                <th>Masked</th>
+                                <th>No Mask</th>
+                                <th>Compliance</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detectionTableBody">
+                            <tr><td colspan="8" class="no-data">No detections yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">All Alerts (MongoDB)</h2>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" style="min-width: 520px;">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Severity</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertsTableBody">
+                            <tr><td colspan="4" class="no-data">No active alerts</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Crowd Analytics (MongoDB)</h2>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" style="min-width: 520px;">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Camera</th>
+                                <th>Crowd</th>
+                                <th>Safe Limit</th>
+                                <th>Density</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crowdTableBody">
+                            <tr><td colspan="5" class="no-data">No analytics yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">System Info</h2>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Alerts</div>
+                    <div class="stat-value" id="activeAlerts" style="color: #ff3333;">0</div>
+                </div>
+                <div class="stat-card" style="margin-top: 15px;">
+                    <div class="stat-label">Risk Level</div>
+                    <div class="stat-value" id="riskLevel" style="font-size: 24px; color: #00ff88;">LOW</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let statsInterval;
+        let alertsInterval;
+        let detectionsInterval;
+        let crowdInterval;
+        let pollingStarted = false;
+
+        async function startCamera() {
+            try {
+                const response = await fetch('/api/start_camera/', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('videoFeed').src = '/video_feed/';
+                    document.getElementById('videoFeed').style.display = 'block';
+                    document.getElementById('placeholder').style.display = 'none';
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'flex';
+                    document.getElementById('systemStatus').classList.add('active');
+                    document.getElementById('statusText').textContent = 'System Active';
+
+                    startDataPolling();
+                }
+            } catch (error) {
+                console.error('Error starting camera:', error);
+            }
+        }
+
+        async function stopCamera() {
+            try {
+                const response = await fetch('/api/stop_camera/', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('videoFeed').style.display = 'none';
+                    document.getElementById('placeholder').style.display = 'block';
+                    document.getElementById('startBtn').style.display = 'flex';
+                    document.getElementById('stopBtn').style.display = 'none';
+                    document.getElementById('systemStatus').classList.remove('active');
+                    document.getElementById('statusText').textContent = 'System Offline';
+
+                    stopDataPolling();
+                }
+            } catch (error) {
+                console.error('Error stopping camera:', error);
+            }
+        }
+
+        function startDataPolling() {
+            if (pollingStarted) {
+                return;
+            }
+
+            fetchStats();
+            fetchAlerts();
+            fetchDetections();
+            fetchCrowdAnalytics();
+
+            statsInterval = setInterval(fetchStats, 2000);
+            alertsInterval = setInterval(fetchAlerts, 3000);
+            detectionsInterval = setInterval(fetchDetections, 5000);
+            crowdInterval = setInterval(fetchCrowdAnalytics, 5000);
+            pollingStarted = true;
+        }
+
+        function stopDataPolling() {
+            // Keep polling enabled so statistics and system info stay live from MongoDB.
+            if (!pollingStarted) {
+                return;
+            }
+
+            fetchStats();
+            fetchAlerts();
+            fetchDetections();
+            fetchCrowdAnalytics();
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/stats/');
+                const data = await response.json();
+
+                document.getElementById('totalFaces').textContent = data.total_faces;
+                document.getElementById('maskedCount').textContent = data.masked_count;
+                document.getElementById('unmaskedCount').textContent = data.unmasked_count;
+                document.getElementById('complianceRate').textContent = data.compliance_rate + '%';
+                document.getElementById('complianceProgress').style.width = data.compliance_rate + '%';
+                document.getElementById('activeAlerts').textContent = data.active_alerts;
+
+                const riskLevel = data.compliance_rate >= 80 ? 'LOW' : data.compliance_rate >= 50 ? 'MEDIUM' : 'HIGH';
+                const riskColor = data.compliance_rate >= 80 ? '#00ff88' : data.compliance_rate >= 50 ? '#ffc107' : '#ff3333';
+                document.getElementById('riskLevel').textContent = riskLevel;
+                document.getElementById('riskLevel').style.color = riskColor;
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        async function fetchAlerts() {
+            try {
+                const response = await fetch('/api/alerts/');
+                const data = await response.json();
+
+                const alertsTableBody = document.getElementById('alertsTableBody');
+
+                if (data.alerts.length === 0) {
+                    alertsTableBody.innerHTML = '<tr><td colspan="4" class="no-data">No alerts found</td></tr>';
+                    return;
+                }
+
+                alertsTableBody.innerHTML = data.alerts.map(alert => {
+                    const timeAgo = getTimeAgo(new Date(alert.timestamp));
+
+                    return `
+                        <tr>
+                            <td>${timeAgo}</td>
+                            <td>${alert.alert_type}</td>
+                            <td><span class="risk-badge ${alert.severity.toLowerCase() === 'high' ? 'high' : 'medium'}">${alert.severity}</span></td>
+                            <td>${alert.message}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
+        }
+
+        async function fetchDetections() {
+            try {
+                const response = await fetch('/api/detections/');
+                const data = await response.json();
+
+                const detectionTableBody = document.getElementById('detectionTableBody');
+
+                if (data.detections.length === 0) {
+                    detectionTableBody.innerHTML = '<tr><td colspan="8" class="no-data">No detections yet</td></tr>';
+                    return;
+                }
+
+                detectionTableBody.innerHTML = data.detections.map(detection => {
+                    const timeAgo = getTimeAgo(new Date(detection.timestamp));
+
+                    return `
+                        <tr>
+                            <td>${timeAgo}</td>
+                            <td>${detection.camera_id}</td>
+                            <td>${detection.location}</td>
+                            <td>${detection.total_faces}</td>
+                            <td>${detection.masked_count}</td>
+                            <td>${detection.unmasked_count}</td>
+                            <td>${detection.compliance_rate.toFixed(2)}%</td>
+                            <td><span class="risk-badge ${detection.risk_level.toLowerCase()}">${detection.risk_level}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error fetching detections:', error);
+            }
+        }
+
+        async function fetchCrowdAnalytics() {
+            try {
+                const response = await fetch('/api/crowd_analytics/');
+                const data = await response.json();
+                const crowdTableBody = document.getElementById('crowdTableBody');
+
+                if (!data.analytics || data.analytics.length === 0) {
+                    crowdTableBody.innerHTML = '<tr><td colspan="5" class="no-data">No analytics yet</td></tr>';
+                    return;
+                }
+
+                crowdTableBody.innerHTML = data.analytics.map(analytic => {
+                    const timeAgo = getTimeAgo(new Date(analytic.timestamp));
+                    return `
+                        <tr>
+                            <td>${timeAgo}</td>
+                            <td>${analytic.camera_id}</td>
+                            <td>${analytic.crowd_count}</td>
+                            <td>${analytic.safe_limit}</td>
+                            <td><span class="risk-badge ${analytic.density_level.toLowerCase() === 'high' ? 'high' : analytic.density_level.toLowerCase() === 'medium' ? 'medium' : 'low'}">${analytic.density_level}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error fetching crowd analytics:', error);
+            }
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+            return Math.floor(seconds / 86400) + ' days ago';
+        }
+
+        // Load database-backed statistics and tables as soon as dashboard opens.
+        startDataPolling();
+    </script>
+</body>
+</html>

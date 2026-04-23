@@ -1,0 +1,228 @@
+<section class="live-summary">
+    <style>
+        .live-summary {
+            margin: 0 0 14px;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background:
+                linear-gradient(135deg, rgba(0, 173, 181, 0.18), rgba(8, 16, 30, 0.82)),
+                rgba(8, 16, 30, 0.72);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+        }
+
+        .live-summary__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .live-summary__eyebrow {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: rgba(244, 251, 255, 0.64);
+            margin-bottom: 6px;
+        }
+
+        .live-summary__title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.05rem, 2vw, 1.35rem);
+            color: #f4fbff;
+        }
+
+        .live-summary__status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(244, 251, 255, 0.88);
+        }
+
+        .live-summary__dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff3333;
+            box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.35);
+        }
+
+        .live-summary__dot.is-live {
+            background: #00ff88;
+            animation: livePulse 2s infinite;
+        }
+
+        .live-summary__status-copy {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .live-summary__status-copy small {
+            color: rgba(244, 251, 255, 0.6);
+        }
+
+        .live-summary__grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .live-summary__card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(8, 16, 30, 0.55);
+        }
+
+        .live-summary__label {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(244, 251, 255, 0.62);
+        }
+
+        .live-summary__value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            margin-top: 6px;
+            color: #f4fbff;
+        }
+
+        .live-summary__value--mint { color: #00ff88; }
+        .live-summary__value--red { color: #ff3333; }
+        .live-summary__value--teal { color: #00adb5; }
+
+        @keyframes livePulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.35); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+
+        @media (max-width: 1100px) {
+            .live-summary__grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .live-summary__grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="live-summary__header">
+        <div>
+            <div class="live-summary__eyebrow">Live camera sync</div>
+            <div class="live-summary__title">Real-time feed data shared across this page</div>
+        </div>
+        <div class="live-summary__status">
+            <span class="live-summary__dot" id="liveSummaryDot"></span>
+            <div class="live-summary__status-copy">
+                <strong id="liveSummaryState">Waiting for live camera data</strong>
+                <small id="liveSummaryUpdated">{{ live_snapshot.last_capture|default:"Waiting for the live camera feed" }}</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="live-summary__grid">
+        <article class="live-summary__card">
+            <div class="live-summary__label">Total Faces</div>
+            <div class="live-summary__value" id="liveSummaryTotalFaces">{{ live_snapshot.total_faces|default:0 }}</div>
+        </article>
+        <article class="live-summary__card">
+            <div class="live-summary__label">Masked</div>
+            <div class="live-summary__value live-summary__value--mint" id="liveSummaryMasked">{{ live_snapshot.masked_count|default:0 }}</div>
+        </article>
+        <article class="live-summary__card">
+            <div class="live-summary__label">No Mask</div>
+            <div class="live-summary__value live-summary__value--red" id="liveSummaryUnmasked">{{ live_snapshot.unmasked_count|default:0 }}</div>
+        </article>
+        <article class="live-summary__card">
+            <div class="live-summary__label">Compliance</div>
+            <div class="live-summary__value live-summary__value--teal" id="liveSummaryCompliance">{{ live_snapshot.compliance_rate|default:0 }}%</div>
+        </article>
+        <article class="live-summary__card">
+            <div class="live-summary__label">Active Alerts</div>
+            <div class="live-summary__value live-summary__value--red" id="liveSummaryAlerts">{{ live_snapshot.active_alerts|default:0 }}</div>
+        </article>
+        <article class="live-summary__card">
+            <div class="live-summary__label">Current Risk</div>
+            <div class="live-summary__value" id="liveSummaryRisk">LOW</div>
+        </article>
+    </div>
+
+    <script>
+        (function () {
+            if (window.__liveSummaryPollingStarted) {
+                return;
+            }
+
+            window.__liveSummaryPollingStarted = true;
+
+            const updateRiskColor = (riskLevel) => {
+                const riskNode = document.getElementById('liveSummaryRisk');
+                if (!riskNode) {
+                    return;
+                }
+
+                riskNode.style.color = riskLevel === 'HIGH' ? '#ff3333' : riskLevel === 'MEDIUM' ? '#ffc107' : '#00ff88';
+            };
+
+            const refreshLiveSummary = async () => {
+                try {
+                    const response = await fetch('/api/stats/');
+                    const data = await response.json();
+                    const compliance = Number(data.compliance_rate || 0);
+                    const riskLevel = compliance >= 80 ? 'LOW' : compliance >= 50 ? 'MEDIUM' : 'HIGH';
+
+                    const mappings = {
+                        liveSummaryTotalFaces: data.total_faces ?? 0,
+                        liveSummaryMasked: data.masked_count ?? 0,
+                        liveSummaryUnmasked: data.unmasked_count ?? 0,
+                        liveSummaryCompliance: `${compliance.toFixed(2)}%`,
+                        liveSummaryAlerts: data.active_alerts ?? 0,
+                        liveSummaryRisk: riskLevel
+                    };
+
+                    Object.entries(mappings).forEach(([id, value]) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    });
+
+                    const dot = document.getElementById('liveSummaryDot');
+                    if (dot) {
+                        dot.classList.toggle('is-live', Number(data.total_faces || 0) > 0 || Number(data.active_alerts || 0) > 0);
+                    }
+
+                    const state = document.getElementById('liveSummaryState');
+                    if (state) {
+                        state.textContent = Number(data.total_faces || 0) > 0 ? 'Live camera data streaming' : 'Waiting for live camera input';
+                    }
+
+                    const updated = document.getElementById('liveSummaryUpdated');
+                    if (updated) {
+                        updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+                    }
+
+                    updateRiskColor(riskLevel);
+                } catch (error) {
+                    console.error('Error refreshing live camera summary:', error);
+                }
+            };
+
+            refreshLiveSummary();
+            setInterval(refreshLiveSummary, 3000);
+        })();
+    </script>
+</section>

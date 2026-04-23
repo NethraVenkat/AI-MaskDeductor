@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mask Detection - Operations Insights</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #101a28;
+            --panel: rgba(255, 255, 255, 0.05);
+            --ink: #f4fbff;
+            --line: rgba(255, 255, 255, 0.1);
+            --ink-soft: rgba(255, 255, 255, 0.62);
+            --blue: #00adb5;
+            --green: #00ff88;
+            --orange: #ffc107;
+            --red: #ff3333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(0, 173, 181, 0.18), transparent 35%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        .shell { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.4rem, 2.3vw, 2rem);
+        }
+
+        .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+        }
+
+        .nav a.active {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 173, 181, 0.25);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .list {
+            margin-top: 8px;
+            max-height: 230px;
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: rgba(8, 16, 30, 0.6);
+        }
+
+        .item {
+            display: grid;
+            grid-template-columns: 140px 1fr auto;
+            gap: 10px;
+            padding: 10px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+        }
+
+        .item:last-child {
+            border-bottom: 0;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .badge {
+            border-radius: 999px;
+            padding: 2px 10px;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .badge.high { background: var(--red); }
+        .badge.medium { background: var(--orange); }
+        .badge.low { background: var(--green); }
+
+        @media (max-width: 980px) {
+            .grid { grid-template-columns: 1fr; }
+            .item { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="header">
+            <h1>Operations Insights Dashboard</h1>
+            <nav class="nav">
+                <a href="/">Live Feed</a>
+                <a href="/dashboard/overview/">Overview</a>
+                <a class="active" href="/dashboard/insights/">Insights</a>
+                <a href="/planner/compliance/">Compliance Planner</a>
+                <a href="/replay/incidents/">Incident Replay</a>
+            </nav>
+        </header>
+
+        {% include 'live_stats_strip.html' %}
+
+        <section class="grid">
+            <article class="panel">
+                <h2>Masked / Unmasked by Camera</h2>
+                <canvas id="cameraMixChart" height="165"></canvas>
+            </article>
+            <article class="panel">
+                <h2>Crowd Density Trend</h2>
+                <canvas id="crowdTrendChart" height="165"></canvas>
+            </article>
+            <article class="panel">
+                <h2>Alert Severity Composition</h2>
+                <canvas id="severityChart" height="165"></canvas>
+            </article>
+            <article class="panel">
+                <h2>Latest Incident Stream</h2>
+                <div id="incidentList" class="list"></div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        const cameraMixChart = new Chart(document.getElementById('cameraMixChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Masked', data: [], backgroundColor: '#2da46e' },
+                    { label: 'No Mask', data: [], backgroundColor: '#c64a3a' }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+                },
+                plugins: { legend: { labels: { color: 'rgba(255,255,255,0.8)' } } }
+            }
+        });
+
+        const crowdTrendChart = new Chart(document.getElementById('crowdTrendChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Crowd Count',
+                    data: [],
+                    borderColor: '#0c7ea4',
+                    backgroundColor: 'rgba(12,126,164,0.18)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    y: { ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+                }
+            }
+        });
+
+        const severityChart = new Chart(document.getElementById('severityChart'), {
+            type: 'pie',
+            data: {
+                labels: ['High', 'Medium', 'Low'],
+                datasets: [{ data: [0, 0, 0], backgroundColor: ['#c64a3a', '#da8a2d', '#2da46e'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.8)' } } } }
+        });
+
+        function aggregateByCamera(detections) {
+            const result = {};
+            detections.forEach(item => {
+                const key = item.camera_id || 'Unknown';
+                if (!result[key]) {
+                    result[key] = { masked: 0, unmasked: 0 };
+                }
+                result[key].masked += Number(item.masked_count || 0);
+                result[key].unmasked += Number(item.unmasked_count || 0);
+            });
+            return result;
+        }
+
+        async function refreshInsights() {
+            const [detectionsRes, alertsRes, crowdRes] = await Promise.all([
+                fetch('/api/detections/'),
+                fetch('/api/alerts/'),
+                fetch('/api/crowd_analytics/')
+            ]);
+
+            const detections = (await detectionsRes.json()).detections || [];
+            const alerts = (await alertsRes.json()).alerts || [];
+            const crowd = (await crowdRes.json()).analytics || [];
+
+            const cameraMap = aggregateByCamera(detections);
+            cameraMixChart.data.labels = Object.keys(cameraMap);
+            cameraMixChart.data.datasets[0].data = Object.values(cameraMap).map(v => v.masked);
+            cameraMixChart.data.datasets[1].data = Object.values(cameraMap).map(v => v.unmasked);
+            cameraMixChart.update();
+
+            const crowdRows = crowd.slice(0, 16).reverse();
+            crowdTrendChart.data.labels = crowdRows.map(x => new Date(x.timestamp).toLocaleTimeString());
+            crowdTrendChart.data.datasets[0].data = crowdRows.map(x => Number(x.crowd_count || 0));
+            crowdTrendChart.update();
+
+            const severity = { high: 0, medium: 0, low: 0 };
+            alerts.forEach(item => {
+                const key = String(item.severity || 'low').toLowerCase();
+                if (severity[key] !== undefined) severity[key] += 1;
+            });
+            severityChart.data.datasets[0].data = [severity.high, severity.medium, severity.low];
+            severityChart.update();
+
+            const incidentList = document.getElementById('incidentList');
+            if (!alerts.length) {
+                incidentList.innerHTML = '<div class="item">No incidents found</div>';
+                return;
+            }
+
+            incidentList.innerHTML = alerts.slice(0, 14).map(alert => {
+                const s = String(alert.severity || 'low').toLowerCase();
+                return `
+                    <div class="item">
+                        <div>${new Date(alert.timestamp).toLocaleString()}</div>
+                        <div>${alert.message}</div>
+                        <span class="badge ${s}">${alert.severity}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        refreshInsights();
+        setInterval(refreshInsights, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mask Detection - Compliance Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #101a28;
+            --panel: rgba(255, 255, 255, 0.05);
+            --line: rgba(255, 255, 255, 0.1);
+            --ink: #f4fbff;
+            --ink-soft: rgba(255, 255, 255, 0.62);
+            --blue: #00adb5;
+            --teal: #00ff88;
+            --red: #ff3333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(0, 173, 181, 0.18), transparent 35%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        .page { max-width: 1150px; margin: 0 auto; padding: 24px; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.4rem, 2.2vw, 2rem); }
+
+        .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav a.active {
+            background: var(--blue);
+            color: #fff;
+            border-color: var(--blue);
+            box-shadow: 0 8px 24px rgba(0, 173, 181, 0.25);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 14px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--ink-soft);
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 10px 11px;
+            font-size: 14px;
+            background: rgba(8, 16, 30, 0.6);
+            color: var(--ink);
+        }
+
+        button {
+            border: 0;
+            background: var(--blue);
+            color: white;
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            box-shadow: 0 10px 24px rgba(0, 173, 181, 0.18);
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .stat {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(8, 16, 30, 0.55);
+        }
+
+        .stat p:first-child { color: var(--ink-soft); font-size: 12px; }
+        .stat p:last-child { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; margin-top: 4px; }
+
+        .advice {
+            margin-top: 12px;
+            border-radius: 10px;
+            background: rgba(0, 173, 181, 0.12);
+            border: 1px solid rgba(0, 173, 181, 0.25);
+            padding: 10px;
+            color: rgba(244, 251, 255, 0.86);
+            font-size: 14px;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        @media (max-width: 920px) {
+            .grid { grid-template-columns: 1fr; }
+            .results { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="header">
+            <h1>Compliance Planner</h1>
+            <nav class="nav">
+                <a href="/">Live Feed</a>
+                <a href="/dashboard/overview/">Overview</a>
+                <a href="/dashboard/insights/">Insights</a>
+                <a class="active" href="/planner/compliance/">Compliance Planner</a>
+                <a href="/replay/incidents/">Incident Replay</a>
+            </nav>
+        </header>
+
+        {% include 'live_stats_strip.html' %}
+
+        <section class="grid">
+            <article class="panel">
+                <h2>What-if Scenario Inputs</h2>
+                <div class="field">
+                    <label for="visitors">Expected visitors per hour</label>
+                    <input id="visitors" type="number" value="120" min="1">
+                </div>
+                <div class="field">
+                    <label for="baseCompliance">Current compliance (%)</label>
+                    <input id="baseCompliance" type="number" value="72" min="1" max="100">
+                </div>
+                <div class="field">
+                    <label for="targetCompliance">Target compliance (%)</label>
+                    <input id="targetCompliance" type="number" value="90" min="1" max="100">
+                </div>
+                <div class="field">
+                    <label for="staff">Intervention staff allocated</label>
+                    <input id="staff" type="number" value="3" min="0">
+                </div>
+                <button onclick="runPlan()">Run Scenario Plan</button>
+                <div class="advice" id="adviceBox"></div>
+            </article>
+
+            <article class="panel">
+                <h2>Expected Impact</h2>
+                <div class="results">
+                    <div class="stat"><p>Potential Violations (Current)</p><p id="violationsNow">0</p></div>
+                    <div class="stat"><p>Potential Violations (Target)</p><p id="violationsTarget">0</p></div>
+                    <div class="stat"><p>Incidents Prevented</p><p id="incidentsPrevented">0</p></div>
+                    <div class="stat"><p>Estimated Alerts Reduced</p><p id="alertsReduced">0</p></div>
+                    <div class="stat"><p>Risk Index</p><p id="riskIndex">0</p></div>
+                    <div class="stat"><p>Projected Savings Score</p><p id="savingScore">0</p></div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <canvas id="plannerChart" height="130"></canvas>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        const plannerChart = new Chart(document.getElementById('plannerChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Current', 'Target'],
+                datasets: [{
+                    label: 'Potential No-Mask Incidents / hour',
+                    data: [0, 0],
+                    backgroundColor: ['#d44f4f', '#1f9e9f']
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.72)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+                },
+                plugins: { legend: { labels: { color: 'rgba(255,255,255,0.8)' } } }
+            }
+        });
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function runPlan() {
+            const visitors = Number(document.getElementById('visitors').value || 0);
+            const baseCompliance = clamp(Number(document.getElementById('baseCompliance').value || 0), 1, 100);
+            const targetCompliance = clamp(Number(document.getElementById('targetCompliance').value || 0), 1, 100);
+            const staff = Number(document.getElementById('staff').value || 0);
+
+            const violationsNow = Math.round(visitors * (100 - baseCompliance) / 100);
+            const violationsTarget = Math.round(visitors * (100 - targetCompliance) / 100);
+            const prevented = Math.max(violationsNow - violationsTarget, 0);
+            const alertsReduced = Math.round(prevented * 0.65);
+            const riskIndex = Math.max(100 - targetCompliance + (violationsTarget / Math.max(visitors, 1)) * 50 - (staff * 3), 5).toFixed(1);
+            const savingScore = Math.round(prevented * 1.8 + staff * 2);
+
+            document.getElementById('violationsNow').textContent = violationsNow;
+            document.getElementById('violationsTarget').textContent = violationsTarget;
+            document.getElementById('incidentsPrevented').textContent = prevented;
+            document.getElementById('alertsReduced').textContent = alertsReduced;
+            document.getElementById('riskIndex').textContent = riskIndex;
+            document.getElementById('savingScore').textContent = savingScore;
+
+            plannerChart.data.datasets[0].data = [violationsNow, violationsTarget];
+            plannerChart.update();
+
+            const advice = prevented > 20
+                ? 'High impact scenario: prioritize entry gate monitoring and dynamic voice reminders.'
+                : prevented > 8
+                    ? 'Moderate impact scenario: combine signage refresh with staff walkthrough every 20 minutes.'
+                    : 'Low impact scenario: tune target compliance or increase intervention staffing for measurable gains.';
+            document.getElementById('adviceBox').textContent = advice;
+        }
+
+        runPlan();
+    </script>
+</body>
+</html>
