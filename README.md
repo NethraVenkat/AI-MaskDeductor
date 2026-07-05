@@ -91,11 +91,3 @@ Run `python verify_setup.py` to perform quick checks (Python version, required p
 
 - If the dashboard shows `Camera Offline` check backend logs and confirm `/api/start_camera/` returns success.
 - If polling returns JSON errors, open browser DevTools Network tab to inspect API responses.
-
-## License & Attribution
-
-This project is provided as-is. Add a license file if you plan to redistribute.
-
-## Contact
-
-For questions or improvements, edit the repo or open an issue in your preferred VCS host.
